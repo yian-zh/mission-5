@@ -140,3 +140,57 @@ Here is how your codebase directly satisfies the grading requirements:
 | **Central Service** | Exposes REST endpoints to save/delete and manually refresh Redis cache from PostgreSQL. | [ProductController.java](file:///c:/Users/tojit/OneDrive/Documents/School%20Projects/Mission-5/central-service/src/main/java/com/example/central_service/controller/ProductController.java) |
 | **PostgreSQL & Indexing** | Permanent schema is set in `db/init.sql`. Indexes are built by `benchmark.ps1`. | [init.sql](file:///c:/Users/tojit/OneDrive/Documents/School%20Projects/Mission-5/db/init.sql) & [benchmark.ps1](file:///c:/Users/tojit/OneDrive/Documents/School%20Projects/Mission-5/db/benchmark.ps1#L55-L68) |
 | **pgBadger Reports** | PostgreSQL is configured with logging parameters (log prefix, collector, etc.), and reports are built with pgBadger. | [postgresql.conf](file:///c:/Users/tojit/OneDrive/Documents/School%20Projects/Mission-5/db/postgresql.conf) & [run-pgbadger.ps1](file:///c:/Users/tojit/OneDrive/Documents/School%20Projects/Mission-5/db/run-pgbadger.ps1) |
+
+---
+
+## Part 4: Testing on a Deployed Droplet
+
+If you want to perform validation directly on your live DigitalOcean Droplet, follow these steps via SSH.
+
+### 1. Access Your Droplet Terminal
+Establish an SSH connection from your local computer:
+```bash
+ssh root@<your_droplet_ip>
+```
+
+### 2. Verify Redis Cache (Server 02)
+Run Redis CLI commands directly inside the live production container:
+```bash
+# Check existing cache keys
+docker exec -it mission5-redis-prod redis-cli keys "*"
+
+# Print the cached product list JSON
+docker exec -it mission5-redis-prod redis-cli get products:all
+```
+
+### 3. Verify Postgres Schema & Indexes (Server 04)
+Run database console commands inside the live Postgres container:
+```bash
+docker exec -it mission5-postgres-prod psql -U postgres -d mission5_db -c "\d products"
+```
+
+### 4. Run SQL Performance Indexing Benchmark
+Run EXPLAIN ANALYZE queries directly in the database container to compare query performance with and without indexes:
+```bash
+# Test query performance on category_id
+docker exec -it mission5-postgres-prod psql -U postgres -d mission5_db -c "EXPLAIN ANALYZE SELECT * FROM products WHERE category_id = 3;"
+```
+
+### 5. Generate and Download pgBadger Reports on the Droplet
+To extract Postgres activity logs on the Droplet and generate the HTML report:
+
+1. **Extract logs and generate HTML**:
+   ```bash
+   # Copy postgresql.log from the container
+   docker cp mission5-postgres-prod:/var/lib/postgresql/data/log/postgresql.log /opt/mission-5/db/postgresql.log
+
+   # Run pgBadger via a temporary Docker image to generate report.html
+   docker run --rm -v "/opt/mission-5/db:/data" alpine sh -c "apk add --no-cache perl wget && wget -q https://raw.githubusercontent.com/darold/pgbadger/master/pgbadger -O /usr/local/bin/pgbadger && chmod +x /usr/local/bin/pgbadger && pgbadger /data/postgresql.log -o /data/report.html"
+   ```
+2. **Download the report to your local PC**:
+   Open a **new terminal tab on your local PC** (not SSH) and run:
+   ```bash
+   scp root@<your_droplet_ip>:/opt/mission-5/db/report.html ./db/report_droplet.html
+   ```
+   You can now open `report_droplet.html` locally in any web browser to capture your screenshots!
+
