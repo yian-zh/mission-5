@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NextGen Catalog - Home</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <div class="glow-orb orb-1"></div>
+    <div class="glow-orb orb-2"></div>
+
+    <header>
+        <div class="nav-container">
+            <a href="/" class="logo">
+                NextGen <span>Catalog</span>
+            </a>
+            <nav>
+                <ul>
+                    <li><a href="/" class="active">Home</a></li>
+                    <li><a href="/admin">Admin Panel</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <div class="page-title-section">
+            <h1 class="page-title">Discover Our Products</h1>
+            <p class="page-subtitle">Premium items cached in high-performance storage for lightning-fast delivery.</p>
+        </div>
+
+        <div class="status-grid">
+            <div class="status-card redis-card">
+                <h3>Cache Server Status</h3>
+                <div class="value" style="color: #ef4444; display: flex; align-items: center; gap: 0.5rem;">
+                    Redis Cache
+                </div>
+                <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                    Data retrieved strictly from Redis server (Server 02) to avoid PostgreSQL load.
+                </p>
+            </div>
+            <div class="status-card">
+                <h3>Data Delivery Mode</h3>
+                <div class="value" th:text="${dataSource}">Redis Cache</div>
+                <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                    Active strategy: Cache-Aside with Write-Through syncing from PostgreSQL.
+                </p>
+            </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar" th:if="${not #lists.isEmpty(categories)}">
+            <button class="filter-btn active" onclick="filterProducts('all')">All Products</button>
+            <button class="filter-btn" 
+                    th:each="cat : ${categories}" 
+                    th:text="${cat.name}" 
+                    th:attr="onclick=|filterProducts('${cat.id}')|">Category</button>
+        </div>
+
+        <!-- Products Grid -->
+        <div class="product-grid" id="productGrid">
+            <div class="product-card" 
+                 th:each="product : ${products}" 
+                 th:data-category-id="${product.category != null ? product.category.id : 'none'}">
+                <div>
+                    <div class="product-category" th:text="${product.category != null ? product.category.name : 'Uncategorized'}">Category</div>
+                    <h3 class="product-name" th:text="${product.name}">Product Name</h3>
+                    <p class="product-desc" th:text="${product.description}">Product Description</p>
+                </div>
+                <div class="product-meta">
+                    <span class="product-price" th:text="'$' + ${product.price}">$0.00</span>
+                    <span class="product-date" th:text="${#temporals.format(product.createdAt, 'yyyy-MM-dd HH:mm')}">Date</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        <div class="empty-state" id="emptyState" th:if="${#lists.isEmpty(products)}">
+            <h3>No Products Found</h3>
+            <p>Go to the Admin Panel to insert new products or trigger a cache sync from PostgreSQL.</p>
+            <br>
+            <a href="/admin" class="btn btn-primary">Go to Admin Panel</a>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 NextGen Catalog. Driven by Spring Boot, PostgreSQL, and Redis Cache. All rights reserved.</p>
+    </footer>
+
+    <script>
+        function filterProducts(categoryId) {
+            // Update active state of buttons
+            const buttons = document.querySelectorAll('.filter-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Filter products
+            const cards = document.querySelectorAll('.product-card');
+            let visibleCount = 0;
+
+            cards.forEach(card => {
+                const cardCatId = card.getAttribute('data-category-id');
+                if (categoryId === 'all' || cardCatId === categoryId) {
+                    card.style.display = 'flex';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            // Handle empty state manually when filtering
+            const emptyState = document.getElementById('emptyState');
+            if (emptyState) {
+                if (visibleCount === 0) {
+                    emptyState.style.display = 'block';
+                } else {
+                    emptyState.style.display = 'none';
+                }
+            } else if (visibleCount === 0) {
+                // If the thymeleaf emptyState doesn't exist, we can inject a temporary one
+                let tempEmpty = document.getElementById('tempEmptyState');
+                if (!tempEmpty) {
+                    tempEmpty = document.createElement('div');
+                    tempEmpty.id = 'tempEmptyState';
+                    tempEmpty.className = 'empty-state';
+                    tempEmpty.innerHTML = '<h3>No Products in this Category</h3><p>Try filtering by another category or add new ones.</p>';
+                    document.getElementById('productGrid').after(tempEmpty);
+                }
+                tempEmpty.style.display = 'block';
+            } else {
+                const tempEmpty = document.getElementById('tempEmptyState');
+                if (tempEmpty) {
+                    tempEmpty.style.display = 'none';
+                }
+            }
+        }
+    </script>
+</body>
+</html>

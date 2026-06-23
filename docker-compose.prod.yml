@@ -1,0 +1,64 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: mission5-postgres-prod
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mission5_db
+    ports:
+      - "127.0.0.1:5432:5432" # Secure postgres by only exposing to localhost
+    volumes:
+      - pgdata-prod:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./db/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+
+  redis:
+    image: redis:7-alpine
+    container_name: mission5-redis-prod
+    restart: always
+    ports:
+      - "127.0.0.1:6379:6379" # Secure redis by only exposing to localhost
+    volumes:
+      - redisdata-prod:/data
+    command: redis-server --appendonly yes
+
+  central-service:
+    build:
+      context: ./central-service
+      dockerfile: Dockerfile
+    container_name: mission5-central-service-prod
+    restart: always
+    ports:
+      - "8081:8081"
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/mission5_db
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=password
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+
+  web-admin-app:
+    build:
+      context: ./web-admin-app
+      dockerfile: Dockerfile
+    container_name: mission5-web-admin-app-prod
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      - redis
+      - central-service
+    environment:
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - CENTRAL_SERVICE_URL=http://central-service:8081/api
+
+volumes:
+  pgdata-prod:
+  redisdata-prod:

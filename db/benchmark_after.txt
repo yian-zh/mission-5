@@ -1,0 +1,42 @@
+﻿==================================================
+QUERY EXECUTION PLANS AFTER INDEXING (INDEX SCANS)
+==================================================
+
+1. Filter by category_id:
+Query: EXPLAIN ANALYZE SELECT * FROM products WHERE category_id = 4;
+Plan:
+                                                            QUERY PLAN                                                            
+----------------------------------------------------------------------------------------------------------------------------------
+ Bitmap Heap Scan on products  (cost=4.67..129.26 rows=50 width=83) (actual time=0.270..0.774 rows=2043 loops=1)
+   Recheck Cond: (category_id = 4)
+   Heap Blocks: exact=243
+   ->  Bitmap Index Scan on idx_products_category  (cost=0.00..4.66 rows=50 width=0) (actual time=0.235..0.236 rows=2043 loops=1)
+         Index Cond: (category_id = 4)
+ Planning Time: 1.440 ms
+ Execution Time: 1.020 ms
+(7 rows)
+
+
+2. Filter by name:
+Query: EXPLAIN ANALYZE SELECT * FROM products WHERE name = 'Product 1 9897c093 ';
+Plan:
+                                                         QUERY PLAN                                                          
+-----------------------------------------------------------------------------------------------------------------------------
+ Index Scan using idx_products_name on products  (cost=0.29..8.30 rows=1 width=83) (actual time=0.101..0.101 rows=0 loops=1)
+   Index Cond: ((name)::text = 'Product 1 9897c093 '::text)
+ Planning Time: 1.278 ms
+ Execution Time: 0.152 ms
+(4 rows)
+
+
+3. Order by created_at DESC:
+Query: EXPLAIN ANALYZE SELECT * FROM products ORDER BY created_at DESC LIMIT 100;
+Plan:
+                                                                        QUERY PLAN                                                                         
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.29..12.70 rows=100 width=83) (actual time=0.052..0.294 rows=100 loops=1)
+   ->  Index Scan Backward using idx_products_created_at on products  (cost=0.29..1242.20 rows=10000 width=83) (actual time=0.051..0.286 rows=100 loops=1)
+ Planning Time: 1.346 ms
+ Execution Time: 0.393 ms
+(4 rows)
+

@@ -1,0 +1,44 @@
+﻿==================================================
+QUERY EXECUTION PLANS BEFORE INDEXING (SEQ SCANS)
+==================================================
+
+1. Filter by category_id:
+Query: EXPLAIN ANALYZE SELECT * FROM products WHERE category_id = 4;
+Plan:
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Seq Scan on products  (cost=0.00..368.00 rows=50 width=83) (actual time=0.013..1.526 rows=2043 loops=1)
+   Filter: (category_id = 4)
+   Rows Removed by Filter: 7957
+ Planning Time: 1.252 ms
+ Execution Time: 1.752 ms
+(5 rows)
+
+
+2. Filter by name:
+Query: EXPLAIN ANALYZE SELECT * FROM products WHERE name = 'Product 1 9897c093 ';
+Plan:
+                                             QUERY PLAN                                              
+-----------------------------------------------------------------------------------------------------
+ Seq Scan on products  (cost=0.00..368.00 rows=1 width=83) (actual time=1.176..1.176 rows=0 loops=1)
+   Filter: ((name)::text = 'Product 1 9897c093 '::text)
+   Rows Removed by Filter: 10000
+ Planning Time: 0.880 ms
+ Execution Time: 1.208 ms
+(5 rows)
+
+
+3. Order by created_at DESC:
+Query: EXPLAIN ANALYZE SELECT * FROM products ORDER BY created_at DESC LIMIT 100;
+Plan:
+                                                       QUERY PLAN                                                        
+-------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=725.19..725.44 rows=100 width=83) (actual time=2.794..2.805 rows=100 loops=1)
+   ->  Sort  (cost=725.19..750.19 rows=10000 width=83) (actual time=2.792..2.797 rows=100 loops=1)
+         Sort Key: created_at DESC
+         Sort Method: top-N heapsort  Memory: 69kB
+         ->  Seq Scan on products  (cost=0.00..343.00 rows=10000 width=83) (actual time=0.011..0.938 rows=10000 loops=1)
+ Planning Time: 1.391 ms
+ Execution Time: 2.980 ms
+(7 rows)
+
